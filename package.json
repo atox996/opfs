@@ -1,0 +1,53 @@
+{
+  "name": "@atox/opfs",
+  "version": "0.0.1",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown && node scripts/gen-api.js",
+    "lint": "pnpm prettier && pnpm eslint && pnpm tscheck",
+    "eslint": "eslint . --cache --fix",
+    "tscheck": "tsc --noEmit",
+    "prettier": "prettier . --cache --write --ignore-unknown",
+    "preinstall": "npx only-allow pnpm",
+    "postinstall": "simple-git-hooks"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.35.0",
+    "@types/eslint-config-prettier": "^6.11.3",
+    "@types/node": "^24.3.1",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^16.3.0",
+    "lint-staged": "^16.1.6",
+    "prettier": "^3.6.2",
+    "simple-git-hooks": "^2.13.1",
+    "tsdown": "^0.14.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0",
+    "zx": "^8.8.1"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged",
+    "commit-msg": "npx --no -- commitlint --edit $1"
+  },
+  "lint-staged": {
+    "*": [
+      "prettier --cache --write --ignore-unknown",
+      "eslint --cache --fix"
+    ],
+    "**/*.{ts,tsx}": [
+      "sh -c 'pnpm tscheck'"
+    ]
+  }
+}

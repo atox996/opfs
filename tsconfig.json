@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    /* ================= 核心配置 ================= */
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    /* ================= 类型检查 ================= */
+    "strict": true,
+
+    /* ================= 模块解析 ================= */
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+
+    /* ========== 类型声明输出相关 ========== */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "isolatedDeclarations": true,
+
+    /* ================= 编译选项 ================= */
+    "outDir": "./dist"
+  },
+  "exclude": ["node_modules", "**/dist"]
+}
