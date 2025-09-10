@@ -5,13 +5,13 @@ export const parsePath = (
   parents: string[];
   fullPath: string;
 } => {
-  // 1) Normalize string and remove extra whitespace
+  // Normalize the string and remove extra whitespace
   path = String(path || "/").trim();
 
-  // 2) Split and filter empty segments
+  // Split the path and filter out empty segments
   const raw = path.split("/").filter((s) => s.length > 0);
 
-  // 3) 处理 . 与 .. 段，并折叠多余分隔
+  // Process '.' and '..' segments and collapse redundant separators
   const stack: string[] = [];
   for (const seg of raw) {
     if (seg === ".") continue;
@@ -22,10 +22,10 @@ export const parsePath = (
     stack.push(seg);
   }
 
-  // 4) 生成规范化绝对路径（根为 "/"），去掉尾随斜杠
+  // Generate normalized absolute path (root is "/") and remove trailing slash
   const fullPath = stack.length ? `/${stack.join("/")}` : "/";
 
-  // 5) 导出 name 与 parents
+  // Extract the name and parent segments
   const name = stack.at(-1);
   const parents = stack.length ? stack.slice(0, -1) : [];
 
@@ -72,25 +72,25 @@ export async function getFileSystemHandle<
 }
 
 /**
- * 根据指定并发数量创建 Promise 池
+ * Create Promise pool with specified concurrency
  *
- * 功能：
- * - 不会立即执行 Promise
- * - 返回一个数组，每个元素是一个 async 函数，执行时会按顺序从任务列表取任务
- * - 外部可以自由使用 Promise.all / Promise.allSettled 等来执行
+ * Features:
+ * - Does not execute Promises immediately
+ * - Returns an array where each element is an async function that sequentially takes tasks from the task list when executed
+ * - Externally can freely use Promise.all / Promise.allSettled to execute
  *
- * @param tasks - 返回 Promise 的函数数组
- * @param concurrency - 最大并发数量（可选，默认 5）
- * @returns Promise 数组，由外部控制执行
+ * @param tasks - Array of functions that return Promise
+ * @param concurrency - Maximum concurrency (optional, default 5)
+ * @returns Array of Promise, controlled by external execution
  */
 export function createPromisePool<T>(
   tasks: readonly (() => Promise<T>)[],
   concurrency = 5,
 ): Promise<void>[] {
-  // 创建一个迭代器，用于顺序取任务
+  // Create an iterator for sequentially fetching tasks
   const iterator = tasks[Symbol.iterator]();
 
-  // 每个“池”函数，从迭代器中取任务执行
+  // Each "pool" function fetches tasks from the iterator and executes them
   async function poolTask() {
     for (;;) {
       const next = iterator.next();
@@ -99,7 +99,7 @@ export function createPromisePool<T>(
     }
   }
 
-  // 根据并发数量创建 Promise 池
+  // Create Promise pool according to concurrency number
   return Array(Math.min(concurrency, tasks.length))
     .fill(0)
     .map(() => poolTask());

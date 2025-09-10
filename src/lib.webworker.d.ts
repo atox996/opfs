@@ -7,69 +7,69 @@ type FileSystemSyncAccessMode = 'read-only' | 'readwrite' | 'readwrite-unsafe';
  * Parameter types for createSyncAccessHandle
  */
 interface FileSystemSyncAccessHandleOptions {
-  /** 锁定模式，默认 "readwrite" */
+  /** Lock mode, defaults to "readwrite" */
   mode?: FileSystemSyncAccessMode;
 }
 
 /**
- * 代表一个同步访问的文件句柄，提供高性能读写操作。
+ * Represents a synchronous access file handle that provides high-performance read/write operations.
  */
 interface FileSystemSyncAccessHandle {
   /**
-   * 从文件中读取内容到指定缓冲区。
+   * Read content from the file into the specified buffer.
    *
-   * @param buffer 用于存储数据的缓冲区（BufferSource，如 Uint8Array、DataView 等）。
-   *               注意：不能直接操作 ArrayBuffer，应通过类型化数组访问。
-   * @param options 可选对象：
-   *   - at: number，从文件指定字节偏移开始读取
-   * @returns 实际读取的字节数
-   * @throws InvalidStateError 如果访问句柄已关闭
-   * @throws TypeError 如果底层文件系统不支持从指定偏移读取
+   * @param buffer Buffer for storing data (BufferSource, such as Uint8Array, DataView, etc.).
+   *               Note: Cannot directly operate on ArrayBuffer, should access through typed arrays.
+   * @param options Optional object:
+   *   - at: number, start reading from the specified byte offset in the file
+   * @returns Number of bytes actually read
+   * @throws InvalidStateError If the access handle is already closed
+   * @throws TypeError If the underlying file system does not support reading from the specified offset
    */
   read(buffer: BufferSource, options?: { at?: number }): number;
 
   /**
-   * 将指定缓冲区的数据写入文件。
+   * Write data from the specified buffer to the file.
    *
-   * @param buffer 用于写入文件的数据（BufferSource，如 Uint8Array、DataView 等）
-   * @param options 可选对象：
-   *   - at: number，从文件指定字节偏移开始写入
-   * @returns 实际写入的字节数
-   * @throws InvalidStateError 如果访问句柄已关闭或文件数据修改失败
-   * @throws QuotaExceededError 如果写入后超出浏览器存储配额
-   * @throws TypeError 如果底层文件系统不支持从指定偏移写入
+   * @param buffer Data to be written to the file (BufferSource, such as Uint8Array, DataView, etc.)
+   * @param options Optional object:
+   *   - at: number, start writing from the specified byte offset in the file
+   * @returns Number of bytes actually written
+   * @throws InvalidStateError If the access handle is already closed or file data modification fails
+   * @throws QuotaExceededError If writing exceeds browser storage quota
+   * @throws TypeError If the underlying file system does not support writing to the specified offset
    */
   write(buffer: BufferSource, options?: { at?: number }): number;
 
   /**
-   * 获取文件的字节大小。
+   * Get the byte size of the file.
    *
-   * @returns 文件字节大小
-   * @throws InvalidStateError 如果访问句柄已关闭
+   * @returns File byte size
+   * @throws InvalidStateError If the access handle is already closed
    */
   getSize(): number;
 
   /**
-   * 将文件截断或扩展到指定大小。
+   * Truncate or extend the file to the specified size.
    *
-   * @param newSize 文件调整后的字节大小
+   * @param newSize Adjusted byte size of the file
    * @returns void
-   * @throws InvalidStateError 如果访问句柄已关闭或文件修改失败
-   * @throws QuotaExceededError 如果 newSize 超出浏览器存储配额
-   * @throws TypeError 如果底层文件系统不支持调整文件大小
+   * @throws InvalidStateError If the access handle is already closed or file modification fails
+   * @throws QuotaExceededError If newSize exceeds browser storage quota
+   * @throws TypeError If the underlying file system does not support adjusting file size
    */
   truncate(newSize: number): void;
 
   /**
-   * 将写入缓冲区的内容持久化到存储。
+   * Persist the contents of the write buffer to storage.
    *
    * @returns void
-   * @throws InvalidStateError 如果访问句柄已关闭
+   * @throws InvalidStateError If the access handle is already closed
    */
   flush(): void;
 
   /**
-   * 关闭句柄并释放锁资源。
+   * Close the handle and release lock resources.
    *
    * @returns void
    */
@@ -77,22 +77,22 @@ interface FileSystemSyncAccessHandle {
 }
 
 /**
- * 文件句柄对象，扩展 FileSystemHandle。
+ * File handle object, extends FileSystemHandle.
  */
 interface FileSystemFileHandle extends FileSystemHandle {
   /**
-   * 创建同步访问句柄（FileSystemSyncAccessHandle）。
+   * Create a synchronous access handle (FileSystemSyncAccessHandle).
    *
-   * @param options 可选对象：
-   *   - mode: 同步访问锁定模式，默认 "readwrite"
-   *       - "read-only": 只读模式，可多开句柄，只能调用 read(), getSize(), close() 等方法
-   *       - "readwrite": 独占读写模式，每个文件同时只能有一个句柄
-   *       - "readwrite-unsafe": 非独占读写模式，可多开句柄，但写入可能不一致
-   * @returns 返回同步访问句柄
-   * @throws NotAllowedError 如果在 readwrite 模式下权限未授予
-   * @throws InvalidStateError 如果句柄不在源私有文件系统
-   * @throws NotFoundError 如果文件未找到
-   * @throws NoModificationAllowedError 如果在 readwrite 模式下尝试同时打开多个句柄
+   * @param options Optional object:
+   *   - mode: Synchronous access lock mode, defaults to "readwrite"
+   *       - "read-only": Read-only mode, multiple handles can be opened, can only call read(), getSize(), close() and other methods
+   *       - "readwrite": Exclusive read-write mode, only one handle can exist per file at the same time
+   *       - "readwrite-unsafe": Non-exclusive read-write mode, multiple handles can be opened, but writes may be inconsistent
+   * @returns Returns synchronous access handle
+   * @throws NotAllowedError If permission is not granted for readwrite mode
+   * @throws InvalidStateError If the handle is not in the origin private file system
+   * @throws NotFoundError If the file is not found
+   * @throws NoModificationAllowedError If attempting to open multiple handles simultaneously in readwrite mode
    */
   createSyncAccessHandle(options?: FileSystemSyncAccessHandleOptions): Promise<FileSystemSyncAccessHandle>;
 }

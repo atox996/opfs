@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - "releases/major"
+      - "releases/minor"
+      - "releases/patch"
+      - "releases/alpha"
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      releaseType:
+        description: "Type of release (major, minor, patch, alpha). Use 'alpha' for prerelease versions. Default is 'patch'."
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - "major"
+          - "minor"
+          - "patch"
+          - "alpha"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: read
+      issues: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "latest"
+          run_install: false
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+            pnpm-
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            .pnpm
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+            node-modules-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
+          # https://github.com/semantic-release/semantic-release/issues/1903
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TYPE: ${{ github.event.inputs.releaseType || '' }}
+        run: |
+          echo "Current branch: ${GITHUB_REF##*/}"
+          echo "Event name: $GITHUB_EVENT_NAME"
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "Manual release triggered with type: $RELEASE_TYPE"
+            echo "Note: --release-as will override commit analysis to force version bump"
+            npx semantic-release --release-as $RELEASE_TYPE --branches ${GITHUB_REF##*/}
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "Tag-based release detected"
+            npx semantic-release --no-ci
+          else
+            echo "Automatic branch-based release triggered"
+            npx semantic-release
+          fi

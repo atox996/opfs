@@ -55,7 +55,7 @@ globalThis.onmessage = async (ev) => {
       result = fn(ah, args, path);
     }
 
-    // 发送响应
+    // Send response
     globalThis.postMessage(
       { id, action, result },
       { transfer: collectTransferables(result) },

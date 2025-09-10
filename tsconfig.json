@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    /* ================= 核心配置 ================= */
+    /* ================= Core Configuration ================= */
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
@@ -9,19 +9,19 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
 
-    /* ================= 类型检查 ================= */
+    /* ================= Type Checking ================= */
     "strict": true,
 
-    /* ================= 模块解析 ================= */
+    /* ================= Module Resolution ================= */
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
 
-    /* ========== 类型声明输出相关 ========== */
+    /* ========== Type Declaration Output ========== */
     "declaration": true,
     "emitDeclarationOnly": true,
     "isolatedDeclarations": true,
 
-    /* ================= 编译选项 ================= */
+    /* ================= Compilation Options ================= */
     "outDir": "./dist"
   },
   "exclude": ["node_modules", "**/dist"]

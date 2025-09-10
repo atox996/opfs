@@ -185,22 +185,22 @@ export class OPFile extends OPFS {
   private prevReadOffset = 0;
 
   /**
-   * 打开文件
+   * Open file
    *
-   * 打开文件以进行同步访问操作。必须在进行读写操作之前调用此方法。
-   * 使用 Web Worker 进行异步操作，避免阻塞主线程。
+   * Open file for synchronous access operations. Must be called before reading and writing operations.
+   * Uses Web Worker for asynchronous operations to avoid blocking the main thread.
    *
-   * @param options - 文件系统同步访问句柄选项
+   * @param options - File system synchronous access handle options
    * @returns Promise<void>
-   * @throws {DOMException} 当文件打开失败时抛出相应异常
+   * @throws {DOMException} Throws corresponding exception when file opening fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    *
-   * // 以读写模式打开文件
+   * // Open file in read/write mode
    * await myFile.open({ mode: "readwrite" });
    *
-   * // 以只读模式打开文件
+   * // Open file in read-only mode
    * await myFile.open({ mode: "readonly" });
    * ```
    */
@@ -209,27 +209,27 @@ export class OPFile extends OPFS {
     return fileWorker.send("open", this.fullPath, options);
   }
   /**
-   * 从文件读取数据
+   * Read data from file
    *
-   * 从文件的指定位置读取指定大小的数据。如果不指定位置，会从上次读取的位置继续。
+   * Read specified size of data from specified position in the file. If position is not specified, continues from last read position.
    *
-   * @param size - 要读取的字节数，或提供预分配的缓冲区
-   * @param options - 读取选项
-   * @param options.at - 读取的起始位置，如果不指定则从上次读取位置继续
-   * @returns Promise<ArrayBuffer> - 读取到的数据
-   * @throws {DOMException} 当读取失败时抛出相应异常
+   * @param size - Number of bytes to read, or provide a preallocated buffer
+   * @param options - Read options
+   * @param options.at - Starting position for reading, continues from last read position if not specified
+   * @returns Promise<ArrayBuffer> - Read data
+   * @throws {DOMException} Throws corresponding exception when reading fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * await myFile.open({ mode: "readonly" });
    *
-   * // 读取 1024 字节
+   * // Read 1024 bytes
    * const data1 = await myFile.read(1024);
    *
-   * // 从指定位置读取
+   * // Read from specified position
    * const data2 = await myFile.read(512, { at: 0 });
    *
-   * // 使用预分配的缓冲区
+   * // Use preallocated buffer
    * const buffer = new Uint8Array(256);
    * const data3 = await myFile.read(buffer);
    * ```
@@ -249,28 +249,28 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 向文件写入数据
+   * Write data to file
    *
-   * 向文件的指定位置写入数据。如果不指定位置，会从上次写入的位置继续。
-   * 支持写入字符串或二进制数据。
+   * Write data to specified position in the file. If position is not specified, continues from last write position.
+   * Supports writing strings or binary data.
    *
-   * @param data - 要写入的数据，可以是字符串或 BufferSource
-   * @param options - 写入选项
-   * @param options.at - 写入的起始位置，如果不指定则从上次写入位置继续
-   * @returns Promise<number> - 实际写入的字节数
-   * @throws {DOMException} 当写入失败时抛出相应异常
+   * @param data - Data to write, can be string or BufferSource
+   * @param options - Write options
+   * @param options.at - Starting position for writing, continues from last write position if not specified
+   * @returns Promise<number> - Number of bytes actually written
+   * @throws {DOMException} Throws corresponding exception when writing fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * await myFile.open({ mode: "readwrite" });
    *
-   * // 写入字符串
+   * // Write string
    * const bytesWritten1 = await myFile.write("Hello, World!");
    *
-   * // 从指定位置写入
-   * const bytesWritten2 = await myFile.write("追加内容", { at: 0 });
+   * // Write from specified position
+   * const bytesWritten2 = await myFile.write("Additional content", { at: 0 });
    *
-   * // 写入二进制数据
+   * // Write binary data
    * const buffer = new TextEncoder().encode("Binary data");
    * const bytesWritten3 = await myFile.write(buffer);
    * ```
@@ -291,23 +291,23 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 截断文件
+   * Truncate file
    *
-   * 将文件截断到指定大小。如果新大小小于当前大小，超出部分会被删除。
-   * 如果新大小大于当前大小，文件会被扩展，新增部分用零填充。
+   * Truncate the file to the specified size. If the new size is smaller than the current size, excess data is removed.
+   * If the new size is larger than the current size, the file is extended and new parts are filled with zeros.
    *
-   * @param newSize - 新的文件大小（字节数）
+   * @param newSize - New file size (in bytes)
    * @returns Promise<void>
-   * @throws {DOMException} 当截断失败时抛出相应异常
+   * @throws {DOMException} Throws corresponding exception when truncation fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * await myFile.open({ mode: "readwrite" });
    *
-   * // 截断到 100 字节
+   * // Truncate to 100 bytes
    * await myFile.truncate(100);
    *
-   * // 扩展文件到 1000 字节
+   * // Extend file to 1000 bytes
    * await myFile.truncate(1000);
    * ```
    */
@@ -317,18 +317,18 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 刷新文件缓冲区
+   * Flush file buffer
    *
-   * 将文件缓冲区中的数据强制写入到磁盘，确保数据持久化。
+   * Force data in the file buffer to be written to disk, ensuring data persistence.
    *
    * @returns Promise<void>
-   * @throws {DOMException} 当刷新失败时抛出相应异常
+   * @throws {DOMException} Throws corresponding exception when flush fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * await myFile.open({ mode: "readwrite" });
-   * await myFile.write("重要数据");
-   * await myFile.flush(); // 确保数据写入磁盘
+   * await myFile.write("Important data");
+   * await myFile.flush(); // Ensure data is written to disk
    * ```
    */
   flush(): Promise<void> {
@@ -336,17 +336,17 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 获取文件大小
+   * Get file size
    *
-   * 返回文件的当前大小（字节数）。
+   * Returns the current size of the file (in bytes).
    *
-   * @returns Promise<number> - 文件大小（字节数）
-   * @throws {DOMException} 当获取大小失败时抛出相应异常
+   * @returns Promise<number> - File size (in bytes)
+   * @throws {DOMException} Throws corresponding exception when getting size fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * const size = await myFile.getSize();
-   * console.log(`文件大小: ${size} 字节`);
+   * console.log(`File size: ${size} bytes`);
    * ```
    */
   getSize(): Promise<number> {
@@ -354,18 +354,18 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 关闭文件
+   * Close file
    *
-   * 关闭文件句柄，释放相关资源。在完成文件操作后应该调用此方法。
+   * Close the file handle and release related resources. This method should be called after completing file operations.
    *
    * @returns Promise<void>
-   * @throws {DOMException} 当关闭失败时抛出相应异常
+   * @throws {DOMException} Throws corresponding exception when closing fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * await myFile.open({ mode: "readwrite" });
-   * await myFile.write("数据");
-   * await myFile.close(); // 关闭文件
+   * await myFile.write("Data");
+   * await myFile.close(); // Close file
    * ```
    */
   async close(): Promise<void> {
@@ -373,17 +373,17 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 读取文件内容为文本
+   * Read file content as text
    *
-   * 将整个文件内容读取为 UTF-8 编码的字符串。
+   * Read the entire file content as a UTF-8 encoded string.
    *
-   * @returns Promise<string> - 文件的文本内容
-   * @throws {DOMException} 当读取失败时抛出相应异常
+   * @returns Promise<string> - Text content of the file
+   * @throws {DOMException} Throws corresponding exception when reading fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * const content = await myFile.text();
-   * console.log(content); // 输出文件内容
+   * console.log(content); // Output file content
    * ```
    */
   async text(): Promise<string> {
@@ -391,18 +391,18 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 读取文件内容为 ArrayBuffer
+   * Read file content as ArrayBuffer
    *
-   * 将整个文件内容读取为 ArrayBuffer 对象。
+   * Read the entire file content as an ArrayBuffer object.
    *
-   * @returns Promise<ArrayBuffer> - 文件的二进制内容
-   * @throws {DOMException} 当读取失败时抛出相应异常
+   * @returns Promise<ArrayBuffer> - Binary content of the file
+   * @throws {DOMException} Throws corresponding exception when reading fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.bin");
    * const buffer = await myFile.arrayBuffer();
    * const view = new Uint8Array(buffer);
-   * console.log(view); // 输出二进制数据
+   * console.log(view); // Output binary data
    * ```
    */
   async arrayBuffer(): Promise<ArrayBuffer> {
@@ -411,13 +411,13 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 获取文件流
+   * Get file stream
    *
-   * 返回一个 ReadableStream，用于流式读取文件内容。
-   * 适用于处理大文件，避免一次性加载到内存中。
+   * Returns a ReadableStream for streaming file content.
+   * Suitable for processing large files to avoid loading everything into memory at once.
    *
-   * @returns Promise<ReadableStream<BufferSource>> - 文件流
-   * @throws {DOMException} 当获取流失败时抛出相应异常
+   * @returns Promise<ReadableStream<BufferSource>> - File stream
+   * @throws {DOMException} Throws corresponding exception when getting stream fails
    * @example
    * ```typescript
    * const myFile = file("/path/to/largefile.txt");
@@ -444,18 +444,18 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 获取原生 File 对象
+   * Get native File object
    *
-   * 返回浏览器原生的 File 对象，可以用于与其他 Web API 交互。
+   * Returns the browser's native File object, which can be used to interact with other Web APIs.
    *
-   * @returns Promise<File | undefined> - 原生 File 对象，如果文件不存在则返回 undefined
+   * @returns Promise<File | undefined> - Native File object, returns undefined if file doesn't exist
    * @example
    * ```typescript
    * const myFile = file("/path/to/file.txt");
    * const nativeFile = await myFile.getFile();
    *
    * if (nativeFile) {
-   *   // 使用原生 File 对象
+   *   // Use native File object
    *   console.log(nativeFile.name);
    *   console.log(nativeFile.size);
    *   console.log(nativeFile.type);
@@ -472,36 +472,36 @@ export class OPFile extends OPFS {
   }
 
   /**
-   * 复制文件到目标位置
+   * Copy file to destination
    *
-   * 将文件复制到指定的目标位置。支持复制到 FileSystemHandle、OPFS 对象或字符串路径。
-   * 如果目标是目录，文件会被复制到该目录中；如果目标是文件路径，文件会被复制并重命名。
-   * 如果目标文件已存在，会抛出异常。
+   * Copy the file to the specified destination. Supports copying to FileSystemHandle, OPFS objects or string paths.
+   * If destination is a directory, file will be copied into that directory; if destination is a file path, file will be copied and renamed.
+   * Throws exception if target file already exists.
    *
-   * @param dest - 目标位置，可以是 FileSystemHandle、OPFS 对象或字符串路径
+   * @param dest - Destination, can be FileSystemHandle, OPFS object or string path
    * @returns Promise<void>
-   * @throws {DOMException} 当源文件不存在时抛出 NotFoundError
-   * @throws {DOMException} 当目标文件已存在时抛出 AlreadyExistsError
-   * @throws {DOMException} 当目标句柄类型不支持时抛出 NotSupportedError
+   * @throws {DOMException} Throws NotFoundError when source file does not exist
+   * @throws {DOMException} Throws AlreadyExistsError when target file already exists
+   * @throws {DOMException} Throws NotSupportedError when target handle type is not supported
    * @example
    * ```typescript
    * const sourceFile = file("/path/to/source.txt");
    *
-   * // 复制到字符串路径（支持重命名）
+   * // Copy to string path (supports renaming)
    * await sourceFile.copyTo("/path/to/destination.txt");
    *
-   * // 复制到目录
+   * // Copy to directory
    * await sourceFile.copyTo("/path/to/directory");
    *
-   * // 复制到另一个 OPFile 对象
+   * // Copy to another OPFile object
    * const destFile = file("/path/to/destination.txt");
    * await sourceFile.copyTo(destFile);
    *
-   * // 复制到 OPDir 对象
+   * // Copy to OPDir object
    * const destDir = dir("/path/to/directory");
    * await sourceFile.copyTo(destDir);
    *
-   * // 复制到 FileSystemDirectoryHandle
+   * // Copy to FileSystemDirectoryHandle
    * const handle = await navigator.storage.getDirectory();
    * await sourceFile.copyTo(handle);
    * ```
@@ -514,10 +514,10 @@ export class OPFile extends OPFS {
     let targetName: string = this.name;
 
     if (dest instanceof FileSystemDirectoryHandle) {
-      // 显式目录句柄
+      // Explicit directory handle
       targetDir = dest;
     } else if (dest instanceof FileSystemFileHandle) {
-      // 严格不覆盖：目标文件句柄必然已存在，直接报错
+      // Strict no-overwrite: Target file handle must already exist, directly throw error
       throw new DOMException(
         "Target file already exists",
         "AlreadyExistsError",
@@ -525,7 +525,7 @@ export class OPFile extends OPFS {
     } else if (dest instanceof FileSystemHandle) {
       throw new DOMException("Unsupported handle type", "NotSupportedError");
     } else if (dest instanceof OPFS) {
-      // OPFS 对象：目录 → 复制到该目录；文件 → 支持重命名，若已存在则报错
+      // OPFS object: Directory → copy to this directory; File → supports renaming, throws error if already exists
       if (dest.kind === "directory") {
         targetDir = (await getFileSystemHandle(dest.fullPath, {
           create: true,
@@ -545,7 +545,7 @@ export class OPFile extends OPFS {
         if (name) targetName = name;
       }
     } else {
-      // 字符串路径：若该路径存在为目录，则复制到该目录；否则作为"文件路径"处理（支持重命名）
+      // String path: If path exists as directory, copy to this directory; otherwise treat as "file path" (supports renaming)
       const { fullPath, parents, name } = parsePath(dest);
       const existingDir = (await getFileSystemHandle(fullPath, {
         create: false,

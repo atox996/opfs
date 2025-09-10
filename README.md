@@ -1,4 +1,6 @@
-# @atox/opfs
+# opfs.js
+
+For Chinese documentation, see [README.zh.md](https://github.com/atox996/opfs/blob/main/README.zh.md).
 
 A modern TypeScript library for working with the Origin Private File System (OPFS) in web browsers. Provides a clean, promise-based API for file and directory operations.
 
@@ -15,38 +17,16 @@ A modern TypeScript library for working with the Origin Private File System (OPF
 ## Installation
 
 ```bash
-npm install @atox/opfs
+npm install opfs.js
 # or
-pnpm add @atox/opfs
+pnpm add opfs.js
 # or
-yarn add @atox/opfs
+yarn add opfs.js
 ```
 
-## Quick Start
+## API Documentation
 
-```typescript
-import { file, dir, write } from "@atox/opfs";
-
-// Create and write to a file
-await write("/path/to/file.txt", "Hello, World!");
-
-// Read file content
-const myFile = file("/path/to/file.txt");
-const content = await myFile.text();
-console.log(content); // "Hello, World!"
-
-// Create a directory
-const myDir = dir("/path/to/directory");
-await myDir.create();
-
-// List directory contents
-const children = await myDir.children();
-for (const child of children) {
-  console.log(`${child.kind}: ${child.name}`);
-}
-```
-
-## API Reference
+For detailed API documentation, please refer to [https://atox996.github.io/opfs/](https://atox996.github.io/opfs/).
 
 ### Core Functions
 
@@ -106,12 +86,36 @@ All file and directory objects inherit from this base class:
 - `copyTo(dest)`: Copy to destination
 - `moveTo(dest)`: Move to destination
 
+## Quick Start
+
+```typescript
+import { file, dir, write } from "opfs.js";
+
+// Create and write to a file
+await write("/path/to/file.txt", "Hello, World!");
+
+// Read file content
+const myFile = file("/path/to/file.txt");
+const content = await myFile.text();
+console.log(content); // "Hello, World!"
+
+// Create a directory
+const myDir = dir("/path/to/directory");
+await myDir.create();
+
+// List directory contents
+const children = await myDir.children();
+for (const child of children) {
+  console.log(`${child.kind}: ${child.name}`);
+}
+```
+
 ## Examples
 
 ### File Operations
 
 ```typescript
-import { file, write } from "@atox/opfs";
+import { file, write } from "opfs.js";
 
 // Write data to file
 await write("/data/config.json", JSON.stringify({ theme: "dark" }));
@@ -136,7 +140,7 @@ while (true) {
 ### Directory Operations
 
 ```typescript
-import { dir } from "@atox/opfs";
+import { dir } from "opfs.js";
 
 // Create directory structure
 const projectDir = dir("/projects/my-app");
@@ -162,7 +166,7 @@ await projectDir.copyTo("/backup/my-app-backup");
 ### Advanced Usage
 
 ```typescript
-import { file, dir } from "@atox/opfs";
+import { file, dir } from "opfs.js";
 
 // File with custom options
 const dataFile = file("/data/important.txt");
@@ -190,12 +194,12 @@ This library requires browsers that support:
 - Web Workers
 - ReadableStream
 
-Supported browsers:
+## Browser Support
 
-- Chrome 86+
-- Edge 86+
-- Firefox 111+
-- Safari 16.4+
+- Chrome 121+ (createSyncAccessHandle with full mode option support)
+- Edge 121+ (createSyncAccessHandle with full mode option support)
+- Firefox 111+ (createSyncAccessHandle supported, but mode parameter not yet available)
+- Safari 15.2+ (createSyncAccessHandle supported, but mode parameter not yet available)
 
 ## Development
 
@@ -211,14 +215,11 @@ pnpm run build
 
 # Run linting
 pnpm run lint
-
-# Generate API documentation
-node scripts/gen-api.js
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/atox996/opfs/blob/main/LICENSE) file for details.
 
 ## Contributing
 
@@ -226,8 +227,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
-
----
-
-For Chinese documentation, see [README.zh.md](README.zh.md).
+See [CHANGELOG.md](https://github.com/atox996/opfs/blob/main/CHANGELOG.md) for version history.
