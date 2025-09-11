@@ -3,24 +3,27 @@ name: Release
 on:
   push:
     branches:
-      - "releases/major"
-      - "releases/minor"
-      - "releases/patch"
-      - "releases/alpha"
+      - beta
+      - alpha
     tags:
       - "v*.*.*"
   workflow_dispatch:
     inputs:
-      releaseType:
-        description: "Type of release (major, minor, patch, alpha). Use 'alpha' for prerelease versions. Default is 'patch'."
+      branch:
+        required: true
+        default: "main"
+        type: choice
+        options:
+          - main
+      release_type:
+        description: "Type of release (patch/minor/major). Default is 'patch'."
         required: true
         default: "patch"
         type: choice
         options:
-          - "major"
-          - "minor"
-          - "patch"
-          - "alpha"
+          - major
+          - minor
+          - patch
 
 jobs:
   release:
@@ -81,19 +84,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
           # https://github.com/semantic-release/semantic-release/issues/1903
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          RELEASE_TYPE: ${{ github.event.inputs.releaseType || '' }}
         run: |
-          echo "Current branch: ${GITHUB_REF##*/}"
-          echo "Event name: $GITHUB_EVENT_NAME"
+
+          echo "GITHUB_REF: $GITHUB_REF_NAME"
 
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            RELEASE_TYPE="${{ github.event.inputs.release_type || 'patch' }}"
             echo "Manual release triggered with type: $RELEASE_TYPE"
-            echo "Note: --release-as will override commit analysis to force version bump"
-            npx semantic-release --release-as $RELEASE_TYPE --branches ${GITHUB_REF##*/}
+            npx semantic-release --release-as $RELEASE_TYPE --branches $GITHUB_REF_NAME
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "Tag-based release detected"
+            echo "Tag-based release detected: $GITHUB_REF_NAME"
             npx semantic-release --no-ci
           else
             echo "Automatic branch-based release triggered"
-            npx semantic-release
+            npx semantic-release --release-as patch
           fi
