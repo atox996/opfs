@@ -1,166 +1,160 @@
-import { file } from "./file";
-import { OPFS } from "./opfs";
-import { createPromisePool, getFileSystemHandle, parsePath } from "./utils";
+import { file, OPFile } from "./file";
+import OPFS from "./opfs";
+import { createPromisePool, getFileSystemHandle } from "./utils";
 
 /**
- * Create directory object
- *
- * Factory function for creating OPDir instances. This is the recommended way to create directory objects.
- *
- * @param path - Directory path
- * @returns OPDir - Directory object instance
- * @example
- * ```typescript
- * const myDir = dir("/path/to/directory");
- * await myDir.create(); // Create directory
- *
- * // Check if directory exists
- * if (await myDir.exists()) {
- *   console.log("Directory exists");
- * }
- * ```
- */
-export function dir(path: string): OPDir {
-  return new OPDir(path);
-}
-
-/**
- * Directory class
- *
- * Inherits from OPFS abstract class, provides directory-related operation functionality.
- * Includes operations such as getting children, copying directories, etc.
+ * Represents a directory in the OPFS (Origin Private File System).
+ * Provides methods to create, query, enumerate, copy, move, and remove directories.
  *
  * @example
- * ```typescript
- * const myDir = dir("/path/to/directory");
+ * ```ts
+ * import { dir } from "opfs";
  *
- * // Get all children in directory
+ * const myDir = dir("/documents");
+ * await myDir.create();
+ *
+ * // List children
  * const children = await myDir.children();
+ * children.forEach(child => console.log(child.fullPath));
  *
- * // Copy entire directory
- * await myDir.copyTo("/path/to/destination");
+ * // Copy directory
+ * const destDirHandle = await navigator.storage.getDirectory();
+ * await myDir.copyTo(destDirHandle);
+ *
+ * // Remove directory
+ * await myDir.remove();
  * ```
  */
-export class OPDir extends OPFS {
-  /** Directory type identifier */
+class OPDir extends OPFS {
+  /** Directory kind: always `"directory"` */
   readonly kind = "directory";
 
   /**
-   * Get all children in directory
+   * Create the directory in OPFS. If it already exists, does nothing.
    *
-   * Returns an array of OPFS objects for all files and subdirectories in the directory.
-   * If the directory does not exist, returns an empty array.
-   *
-   * @returns Promise<OPFS[]> - Array of children, containing file and directory objects
-   * @example
-   * ```typescript
-   * const myDir = dir("/path/to/directory");
-   * const children = await myDir.children();
-   *
-   * for (const child of children) {
-   *   if (child.kind === "file") {
-   *     console.log(`File: ${child.name}`);
-   *   } else {
-   *     console.log(`Directory: ${child.name}`);
-   *   }
-   * }
-   * ```
+   * @returns The underlying `FileSystemDirectoryHandle`.
    */
-  async children(): Promise<OPFS[]> {
+  async create(): Promise<FileSystemDirectoryHandle> {
+    return await getFileSystemHandle(this.fullPath, {
+      create: true,
+      isFile: false,
+    });
+  }
+
+  /**
+   * Checks if the directory exists.
+   *
+   * @returns `true` if the directory exists, `false` otherwise.
+   */
+  async exists(): Promise<boolean> {
+    return (
+      (await getFileSystemHandle(this.fullPath, {
+        create: false,
+        isFile: false,
+      })) !== null
+    );
+  }
+
+  /**
+   * Lists the immediate children of this directory.
+   *
+   * @returns An array of `OPFile` and `OPDir` instances representing the children.
+   */
+  async children(): Promise<(OPDir | OPFile)[]> {
+    const children: (OPDir | OPFile)[] = [];
     const handle = await getFileSystemHandle(this.fullPath, {
       create: false,
       isFile: false,
     });
-    if (!handle) return [];
-    const children = [];
-    for await (const entry of handle.values()) {
-      if (entry.kind === "file") {
-        children.push(file(`${this.fullPath}/${entry.name}`));
+    if (!handle) return children;
+    for await (const item of handle.values()) {
+      const path = `${this.fullPath}/${item.name}`;
+      if (item.kind === "file") {
+        children.push(file(path));
       } else {
-        children.push(dir(`${this.fullPath}/${entry.name}`));
+        children.push(dir(path));
       }
     }
     return children;
   }
 
   /**
-   * Copy directory to destination
+   * Remove the directory.
    *
-   * Recursively copy the entire directory and all its contents to the destination.
-   * Supports copying to FileSystemDirectoryHandle, OPDir objects or string paths.
-   * If the target directory already exists, an exception will be thrown.
+   * - If this is the root directory (no name), all its entries will be removed.
+   * - Otherwise, removes this directory from its parent.
    *
-   * @param dest - Destination, can be FileSystemDirectoryHandle, OPDir object or string path
-   * @returns Promise<void>
-   * @throws {DOMException} Throws NotFoundError when source directory does not exist
-   * @throws {DOMException} Throws AlreadyExistsError when target directory already exists
-   * @example
-   * ```typescript
-   * const sourceDir = dir("/path/to/source");
-   *
-   * // Copy to string path
-   * await sourceDir.copyTo("/path/to/destination");
-   *
-   * // Copy to another OPDir object
-   * const destDir = dir("/path/to/destination");
-   * await sourceDir.copyTo(destDir);
-   *
-   * // Copy to FileSystemDirectoryHandle
-   * const handle = await navigator.storage.getDirectory();
-   * await sourceDir.copyTo(handle);
-   * ```
+   * @remarks Uses a concurrency pool to efficiently delete multiple entries.
    */
-  async copyTo(
-    dest: FileSystemDirectoryHandle | OPDir | string,
-  ): Promise<void> {
-    if (!(await this.exists()))
-      throw new DOMException(
-        "Source directory does not exist",
-        "NotFoundError",
-      );
+  async remove(): Promise<void> {
+    const dirHandle = await getFileSystemHandle(this.fullPath, {
+      create: false,
+      isFile: false,
+    });
+    if (!dirHandle) return;
 
-    let handle: FileSystemDirectoryHandle;
+    // root directory
+    if (!this.name) {
+      const tasks: (() => Promise<void>)[] = [];
+      for await (const itemName of dirHandle.keys()) {
+        tasks.push(() => dirHandle.removeEntry(itemName, { recursive: true }));
+      }
+      await createPromisePool(tasks, 10); // concurrency pool
+      return;
+    }
+
+    const parentHandle = await getFileSystemHandle(this.parents.join("/"), {
+      create: false,
+      isFile: false,
+    });
+    if (!parentHandle) return;
+    await parentHandle.removeEntry(this.name, { recursive: true });
+  }
+
+  /**
+   * Copy this directory and its contents to a destination directory.
+   *
+   * @param dest - Destination directory handle or OPDir instance.
+   */
+  async copyTo(dest: FileSystemDirectoryHandle | OPDir): Promise<void> {
+    let targetDir: FileSystemDirectoryHandle;
     if (dest instanceof FileSystemDirectoryHandle) {
-      handle = dest;
-    } else if (dest instanceof OPDir) {
-      if (await dest.exists())
-        throw new DOMException(
-          "Target directory already exists",
-          "AlreadyExistsError",
-        );
-      handle = await getFileSystemHandle(dest.fullPath, {
-        create: true,
-        isFile: false,
-      });
+      targetDir = dest;
     } else {
-      const { fullPath } = parsePath(dest);
-      const existing = await getFileSystemHandle(fullPath, {
-        create: false,
-        isFile: false,
-      });
-      if (existing)
-        throw new DOMException(
-          "Target directory already exists",
-          "AlreadyExistsError",
-        );
-      handle = await getFileSystemHandle(fullPath, {
-        create: true,
-        isFile: false,
-      });
+      targetDir = await dest.create();
     }
-    const tasks = [];
-    for (const entry of await this.children()) {
-      tasks.push(async () => {
-        if (entry.kind === "file") {
-          await entry.copyTo(handle);
-        } else {
-          const childDestHandle = await handle.getDirectoryHandle(entry.name, {
-            create: true,
-          });
-          await entry.copyTo(childDestHandle);
-        }
-      });
-    }
-    await Promise.allSettled(createPromisePool(tasks));
+
+    const children = await this.children();
+    const tasks = children.map((child) => () => child.copyTo(targetDir));
+    await createPromisePool(tasks, 5);
+  }
+
+  /**
+   * Move this directory to a destination.
+   *
+   * @param dest - Destination directory handle or OPDir instance.
+   */
+  async moveTo(dest: FileSystemDirectoryHandle | OPDir): Promise<void> {
+    await this.copyTo(dest);
+    await this.remove();
   }
 }
+
+/**
+ * Create an `OPDir` instance for a given path.
+ *
+ * @param path - Absolute OPFS directory path (e.g., "/documents").
+ * @returns `OPDir` instance.
+ *
+ * @example
+ * ```ts
+ * import { dir } from "opfs";
+ * const myDir = dir("/documents");
+ * await myDir.create();
+ * ```
+ */
+function dir(path: string): OPDir {
+  return new OPDir(path);
+}
+
+export { dir, OPDir };

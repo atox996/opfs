@@ -8,5 +8,6 @@ export default defineConfig((options) => {
     sourcemap,
     ...options,
     entry: ["src/index.ts", "src/file.worker.js"],
+    copy: ["src/lib.webworker.d.ts"],
   };
 }) satisfies UserConfigFn as UserConfigFn;

@@ -1,108 +1,76 @@
-export const parsePath = (
-  path = "/",
-): {
+import type {
+  Deferred,
+  WorkerAction,
+  WorkerActionArgs,
+  WorkerActionResult,
+  WorkerResponse,
+} from "./types";
+
+export function parsePath(path: string): {
+  fullPath: string;
   name?: string;
   parents: string[];
-  fullPath: string;
-} => {
-  // Normalize the string and remove extra whitespace
-  path = String(path || "/").trim();
-
-  // Split the path and filter out empty segments
-  const raw = path.split("/").filter((s) => s.length > 0);
-
-  // Process '.' and '..' segments and collapse redundant separators
-  const stack: string[] = [];
-  for (const seg of raw) {
-    if (seg === ".") continue;
-    if (seg === "..") {
-      if (stack.length > 0) stack.pop();
-      continue;
-    }
-    stack.push(seg);
-  }
-
-  // Generate normalized absolute path (root is "/") and remove trailing slash
-  const fullPath = stack.length ? `/${stack.join("/")}` : "/";
-
-  // Extract the name and parent segments
-  const name = stack.at(-1);
-  const parents = stack.length ? stack.slice(0, -1) : [];
-
-  return { name, parents, fullPath };
-};
-
-export async function getFileSystemHandle<
-  ISFile extends boolean,
-  ISCreate extends boolean,
-  T = ISFile extends true ? FileSystemFileHandle : FileSystemDirectoryHandle,
-  RT = ISCreate extends true ? T : T | null,
->(
-  path: string,
-  opts: {
-    create: ISCreate;
-    isFile: ISFile;
-  },
-  root?: FileSystemDirectoryHandle,
-): Promise<RT> {
-  const { parents, name } = parsePath(path);
-  root = root || (await navigator.storage.getDirectory());
-  if (name === undefined) return root as RT;
-
-  try {
-    for (const p of parents) {
-      root = await root.getDirectoryHandle(p, {
-        create: opts.create,
-      });
-    }
-    if (opts.isFile) {
-      return (await root.getFileHandle(name, {
-        create: opts.create,
-      })) as RT;
-    }
-    return (await root.getDirectoryHandle(name, {
-      create: opts.create,
-    })) as RT;
-  } catch (err) {
-    if ((err as Error).name === "NotFoundError") {
-      return null as RT;
-    }
-    throw err;
-  }
+} {
+  const segments = path.split("/").filter(Boolean);
+  return {
+    fullPath: `/${segments.join("/")}`,
+    name: segments.pop(),
+    parents: segments,
+  };
 }
 
-/**
- * Create Promise pool with specified concurrency
- *
- * Features:
- * - Does not execute Promises immediately
- * - Returns an array where each element is an async function that sequentially takes tasks from the task list when executed
- * - Externally can freely use Promise.all / Promise.allSettled to execute
- *
- * @param tasks - Array of functions that return Promise
- * @param concurrency - Maximum concurrency (optional, default 5)
- * @returns Array of Promise, controlled by external execution
- */
-export function createPromisePool<T>(
-  tasks: readonly (() => Promise<T>)[],
-  concurrency = 5,
-): Promise<void>[] {
-  // Create an iterator for sequentially fetching tasks
-  const iterator = tasks[Symbol.iterator]();
-
-  // Each "pool" function fetches tasks from the iterator and executes them
-  async function poolTask() {
-    for (;;) {
-      const next = iterator.next();
-      if (next.done) break;
-      await next.value();
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create?: false;
+    isFile: true;
+  },
+): Promise<FileSystemFileHandle | null>;
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create: true;
+    isFile: true;
+  },
+): Promise<FileSystemFileHandle>;
+export function getFileSystemHandle(
+  path: string,
+  options?: {
+    create?: false;
+    isFile?: false;
+  },
+): Promise<FileSystemDirectoryHandle | null>;
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create: true;
+    isFile?: false;
+  },
+): Promise<FileSystemDirectoryHandle>;
+export async function getFileSystemHandle(
+  path: string,
+  options?: {
+    create?: boolean;
+    isFile?: boolean;
+  },
+) {
+  const { name, parents } = parsePath(path);
+  let root = await navigator.storage.getDirectory();
+  if (!name) return options?.isFile ? null : root;
+  try {
+    for (const parent of parents) {
+      root = await root.getDirectoryHandle(parent, { create: options?.create });
     }
+    if (options?.isFile) {
+      return await root.getFileHandle(name, { create: options?.create });
+    }
+    return await root.getDirectoryHandle(name, { create: options?.create });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "NotFoundError") {
+      return null;
+    }
+    throw error;
   }
-
-  // Create Promise pool according to concurrency number
-  return Array(Math.min(concurrency, tasks.length))
-    .fill(0)
-    .map(() => poolTask());
 }
 
 export const createGenerateUniqueId = (): (() => string) => {
@@ -124,6 +92,117 @@ export const collectTransferables = (
   }
   if (transfer.length) return transfer;
 };
+
+export const createFileWorker = (): {
+  open: (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ) => Promise<void>;
+  send: <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => Promise<WorkerActionResult[A]>;
+} => {
+  let worker: Worker | null = null;
+  let openCount = 0;
+
+  const deferredMap = new Map<
+    string,
+    Deferred<WorkerActionResult[WorkerAction]>
+  >();
+  const send = <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => {
+    if (!worker)
+      throw new DOMException(
+        "Worker is not initialized. Call open() first.",
+        "InvalidStateError",
+      );
+    const id = uuid();
+    const { promise, resolve, reject } =
+      Promise.withResolvers<WorkerActionResult[WorkerAction]>();
+    deferredMap.set(id, { resolve, reject });
+    worker.postMessage(
+      { id, action, path, args },
+      {
+        transfer: collectTransferables(...args),
+      },
+    );
+    return promise as Promise<WorkerActionResult[A]>;
+  };
+
+  const open = async (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ): Promise<void> => {
+    if (worker) return;
+    worker = new Worker(new URL("./file.worker.js", import.meta.url), {
+      type: "module",
+    });
+    worker.onmessage = (ev: MessageEvent<WorkerResponse>) => {
+      const { id, action, result, error } = ev.data;
+      const deferred = deferredMap.get(id);
+      if (!deferred) {
+        console.warn("[OPFile]", "No deferred found for id:", id);
+        return;
+      }
+      deferredMap.delete(id);
+      if (error) deferred.reject(new Error(`${error.name}: ${error.message}`));
+      else deferred.resolve(result);
+
+      if (action === "open") {
+        openCount++;
+      } else if (action === "close") {
+        openCount--;
+        if (openCount <= 0) {
+          worker?.terminate();
+          worker = null;
+          openCount = 0;
+          for (const [, deferred] of deferredMap) {
+            deferred.reject(
+              new DOMException("Worker terminated", "AbortError"),
+            );
+          }
+          deferredMap.clear();
+        }
+      }
+    };
+    worker.onerror = (ev) => {
+      for (const [, deferred] of deferredMap) deferred.reject(ev);
+      deferredMap.clear();
+    };
+    await send("open", path, options);
+  };
+
+  return { open, send };
+};
+
+export async function createPromisePool<T>(
+  tasks: readonly (() => Promise<T>)[],
+  concurrency = 5,
+): Promise<void> {
+  // Create an iterator for sequentially fetching tasks
+  const iterator = tasks[Symbol.iterator]();
+
+  // Each "pool" function fetches tasks from the iterator and executes them
+  async function poolTask() {
+    for (;;) {
+      const next = iterator.next();
+      if (next.done) break;
+      await next.value();
+    }
+  }
+
+  // Create Promise pool according to concurrency number
+  const pools = Array(Math.min(concurrency, tasks.length))
+    .fill(0)
+    .map(() => poolTask());
+
+  await Promise.all(pools);
+}
 
 export const bufferTransfer = (
   buffer: BufferSource,
