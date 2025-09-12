@@ -1,5 +1,102 @@
+import OPFileWorker from "./file.worker?worker&inline";
 import OPFS from "./opfs";
-import { createFileWorker, getFileSystemHandle } from "./utils";
+import type {
+  Deferred,
+  FileSystemSyncAccessHandleOptions,
+  FileSystemSyncAccessMode,
+  WorkerAction,
+  WorkerActionArgs,
+  WorkerActionResult,
+  WorkerResponse,
+} from "./types";
+import { collectTransferables, getFileSystemHandle, uuid } from "./utils";
+
+const createFileWorker = (): {
+  open: (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ) => Promise<void>;
+  send: <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => Promise<WorkerActionResult[A]>;
+} => {
+  let worker: Worker | null = null;
+  let openCount = 0;
+
+  const deferredMap = new Map<
+    string,
+    Deferred<WorkerActionResult[WorkerAction]>
+  >();
+  const send = <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => {
+    if (!worker)
+      throw new DOMException(
+        "Worker is not initialized. Call open() first.",
+        "InvalidStateError",
+      );
+    const id = uuid();
+    const { promise, resolve, reject } =
+      Promise.withResolvers<WorkerActionResult[WorkerAction]>();
+    deferredMap.set(id, { resolve, reject });
+    worker.postMessage(
+      { id, action, path, args },
+      {
+        transfer: collectTransferables(...args),
+      },
+    );
+    return promise as Promise<WorkerActionResult[A]>;
+  };
+
+  const open = async (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ): Promise<void> => {
+    if (!worker) {
+      worker = new OPFileWorker();
+      worker.onmessage = (ev: MessageEvent<WorkerResponse>) => {
+        const { id, action, result, error } = ev.data;
+        const deferred = deferredMap.get(id);
+        if (!deferred) {
+          console.warn("[OPFile]", "No deferred found for id:", id);
+          return;
+        }
+        deferredMap.delete(id);
+        if (error)
+          deferred.reject(new Error(`${error.name}: ${error.message}`));
+        else deferred.resolve(result);
+
+        if (action === "open") {
+          openCount++;
+        } else if (action === "close") {
+          openCount--;
+          if (openCount <= 0) {
+            worker?.terminate();
+            worker = null;
+            openCount = 0;
+            for (const [, deferred] of deferredMap) {
+              deferred.reject(
+                new DOMException("Worker terminated", "AbortError"),
+              );
+            }
+            deferredMap.clear();
+          }
+        }
+      };
+      worker.onerror = (ev) => {
+        for (const [, deferred] of deferredMap) deferred.reject(ev);
+        deferredMap.clear();
+      };
+    }
+    await send("open", path, options);
+  };
+
+  return { open, send };
+};
 
 const fileWorker = createFileWorker();
 
@@ -64,7 +161,7 @@ export class FileRW extends FileRO {
     const result = await fileWorker.send("write", this.fullPath, content, {
       at,
     });
-    this.prevWriteOffset = at + content.byteLength;
+    this.prevWriteOffset = at + result;
     return result;
   }
 
@@ -162,8 +259,7 @@ class OPFile extends OPFS {
     } else if (dest instanceof FileSystemFileHandle) {
       targetFile = dest;
     } else if (dest.kind === "directory") {
-      const dir = (await dest.create()) as FileSystemDirectoryHandle;
-      targetFile = await dir.getFileHandle(this.name, { create: true });
+      return this.copyTo(await dest.create());
     } else {
       targetFile = (await dest.create()) as FileSystemFileHandle;
     }

@@ -117,15 +117,26 @@ class OPDir extends OPFS {
    * @param dest - Destination directory handle or OPDir instance.
    */
   async copyTo(dest: FileSystemDirectoryHandle | OPDir): Promise<void> {
-    let targetDir: FileSystemDirectoryHandle;
-    if (dest instanceof FileSystemDirectoryHandle) {
-      targetDir = dest;
-    } else {
-      targetDir = await dest.create();
-    }
-
     const children = await this.children();
-    const tasks = children.map((child) => () => child.copyTo(targetDir));
+    let tasks: (() => Promise<void>)[] = [];
+    if (dest instanceof FileSystemDirectoryHandle) {
+      tasks = children.map((child) => {
+        if (child.kind === "file") {
+          return async () =>
+            child.copyTo(
+              await dest.getFileHandle(child.name, { create: true }),
+            );
+        }
+        return async () =>
+          child.copyTo(
+            await dest.getDirectoryHandle(child.name, { create: true }),
+          );
+      });
+    } else {
+      const destDir = dir(`${dest.fullPath}/${this.name}`);
+      await destDir.create();
+      tasks = children.map((child) => () => child.copyTo(destDir));
+    }
     await createPromisePool(tasks, 5);
   }
 

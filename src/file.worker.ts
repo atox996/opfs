@@ -1,18 +1,17 @@
-// @ts-check
-/// <reference lib="webworker" />
-/// <reference types="./lib.webworker.d.ts" />
-
+import type {
+  FileSystemSyncAccessHandle,
+  WorkerActionsMap,
+  WorkerRequest,
+} from "./types";
 import {
   bufferTransfer,
   collectTransferables,
   getFileSystemHandle,
 } from "./utils";
 
-/** @type {Map<string, FileSystemSyncAccessHandle>} */
-const accessHandleMap = new Map();
+const accessHandleMap = new Map<string, FileSystemSyncAccessHandle>();
 
-/** @type {import('./types').WorkerActionsMap} */
-const actions = {
+const actions: WorkerActionsMap = {
   read: (ah, args) => {
     const readSize = ah.read(...args);
     return bufferTransfer(args[0], readSize);
@@ -27,8 +26,7 @@ const actions = {
   },
 };
 
-/** @type {(ev: MessageEvent<import('./types').WorkerRequest>) => Promise<void>} */
-globalThis.onmessage = async (ev) => {
+self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
   const { id, action, path, args } = ev.data;
 
   try {
@@ -56,13 +54,13 @@ globalThis.onmessage = async (ev) => {
     }
 
     // Send response
-    globalThis.postMessage(
+    self.postMessage(
       { id, action, result },
       { transfer: collectTransferables(result) },
     );
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    globalThis.postMessage({
+    self.postMessage({
       id,
       action,
       error: { message: err.message, name: err.name },

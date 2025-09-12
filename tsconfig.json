@@ -22,7 +22,10 @@
     "isolatedDeclarations": true,
 
     /* ================= Compilation Options ================= */
-    "outDir": "./dist"
+    "outDir": "./dist",
+
+    /* ================= Vite Types ================= */
+    "types": ["vite/client"]
   },
   "exclude": ["node_modules", "**/dist"]
 }
