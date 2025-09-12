@@ -1,108 +1,76 @@
-export const parsePath = (
-  path = "/",
-): {
+import type {
+  Deferred,
+  WorkerAction,
+  WorkerActionArgs,
+  WorkerActionResult,
+  WorkerResponse,
+} from "./types";
+
+export function parsePath(path: string): {
+  fullPath: string;
   name?: string;
   parents: string[];
-  fullPath: string;
-} => {
-  // 1) Normalize string and remove extra whitespace
-  path = String(path || "/").trim();
-
-  // 2) Split and filter empty segments
-  const raw = path.split("/").filter((s) => s.length > 0);
-
-  // 3) 处理 . 与 .. 段，并折叠多余分隔
-  const stack: string[] = [];
-  for (const seg of raw) {
-    if (seg === ".") continue;
-    if (seg === "..") {
-      if (stack.length > 0) stack.pop();
-      continue;
-    }
-    stack.push(seg);
-  }
-
-  // 4) 生成规范化绝对路径（根为 "/"），去掉尾随斜杠
-  const fullPath = stack.length ? `/${stack.join("/")}` : "/";
-
-  // 5) 导出 name 与 parents
-  const name = stack.at(-1);
-  const parents = stack.length ? stack.slice(0, -1) : [];
-
-  return { name, parents, fullPath };
-};
-
-export async function getFileSystemHandle<
-  ISFile extends boolean,
-  ISCreate extends boolean,
-  T = ISFile extends true ? FileSystemFileHandle : FileSystemDirectoryHandle,
-  RT = ISCreate extends true ? T : T | null,
->(
-  path: string,
-  opts: {
-    create: ISCreate;
-    isFile: ISFile;
-  },
-  root?: FileSystemDirectoryHandle,
-): Promise<RT> {
-  const { parents, name } = parsePath(path);
-  root = root || (await navigator.storage.getDirectory());
-  if (name === undefined) return root as RT;
-
-  try {
-    for (const p of parents) {
-      root = await root.getDirectoryHandle(p, {
-        create: opts.create,
-      });
-    }
-    if (opts.isFile) {
-      return (await root.getFileHandle(name, {
-        create: opts.create,
-      })) as RT;
-    }
-    return (await root.getDirectoryHandle(name, {
-      create: opts.create,
-    })) as RT;
-  } catch (err) {
-    if ((err as Error).name === "NotFoundError") {
-      return null as RT;
-    }
-    throw err;
-  }
+} {
+  const segments = path.split("/").filter(Boolean);
+  return {
+    fullPath: `/${segments.join("/")}`,
+    name: segments.pop(),
+    parents: segments,
+  };
 }
 
-/**
- * 根据指定并发数量创建 Promise 池
- *
- * 功能：
- * - 不会立即执行 Promise
- * - 返回一个数组，每个元素是一个 async 函数，执行时会按顺序从任务列表取任务
- * - 外部可以自由使用 Promise.all / Promise.allSettled 等来执行
- *
- * @param tasks - 返回 Promise 的函数数组
- * @param concurrency - 最大并发数量（可选，默认 5）
- * @returns Promise 数组，由外部控制执行
- */
-export function createPromisePool<T>(
-  tasks: readonly (() => Promise<T>)[],
-  concurrency = 5,
-): Promise<void>[] {
-  // 创建一个迭代器，用于顺序取任务
-  const iterator = tasks[Symbol.iterator]();
-
-  // 每个“池”函数，从迭代器中取任务执行
-  async function poolTask() {
-    for (;;) {
-      const next = iterator.next();
-      if (next.done) break;
-      await next.value();
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create?: false;
+    isFile: true;
+  },
+): Promise<FileSystemFileHandle | null>;
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create: true;
+    isFile: true;
+  },
+): Promise<FileSystemFileHandle>;
+export function getFileSystemHandle(
+  path: string,
+  options?: {
+    create?: false;
+    isFile?: false;
+  },
+): Promise<FileSystemDirectoryHandle | null>;
+export function getFileSystemHandle(
+  path: string,
+  options: {
+    create: true;
+    isFile?: false;
+  },
+): Promise<FileSystemDirectoryHandle>;
+export async function getFileSystemHandle(
+  path: string,
+  options?: {
+    create?: boolean;
+    isFile?: boolean;
+  },
+) {
+  const { name, parents } = parsePath(path);
+  let root = await navigator.storage.getDirectory();
+  if (!name) return options?.isFile ? null : root;
+  try {
+    for (const parent of parents) {
+      root = await root.getDirectoryHandle(parent, { create: options?.create });
     }
+    if (options?.isFile) {
+      return await root.getFileHandle(name, { create: options?.create });
+    }
+    return await root.getDirectoryHandle(name, { create: options?.create });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "NotFoundError") {
+      return null;
+    }
+    throw error;
   }
-
-  // 根据并发数量创建 Promise 池
-  return Array(Math.min(concurrency, tasks.length))
-    .fill(0)
-    .map(() => poolTask());
 }
 
 export const createGenerateUniqueId = (): (() => string) => {
@@ -124,6 +92,117 @@ export const collectTransferables = (
   }
   if (transfer.length) return transfer;
 };
+
+export const createFileWorker = (): {
+  open: (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ) => Promise<void>;
+  send: <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => Promise<WorkerActionResult[A]>;
+} => {
+  let worker: Worker | null = null;
+  let openCount = 0;
+
+  const deferredMap = new Map<
+    string,
+    Deferred<WorkerActionResult[WorkerAction]>
+  >();
+  const send = <A extends WorkerAction>(
+    action: A,
+    path: string,
+    ...args: WorkerActionArgs[A]
+  ) => {
+    if (!worker)
+      throw new DOMException(
+        "Worker is not initialized. Call open() first.",
+        "InvalidStateError",
+      );
+    const id = uuid();
+    const { promise, resolve, reject } =
+      Promise.withResolvers<WorkerActionResult[WorkerAction]>();
+    deferredMap.set(id, { resolve, reject });
+    worker.postMessage(
+      { id, action, path, args },
+      {
+        transfer: collectTransferables(...args),
+      },
+    );
+    return promise as Promise<WorkerActionResult[A]>;
+  };
+
+  const open = async (
+    path: string,
+    options?: FileSystemSyncAccessHandleOptions,
+  ): Promise<void> => {
+    if (worker) return;
+    worker = new Worker(new URL("./file.worker.js", import.meta.url), {
+      type: "module",
+    });
+    worker.onmessage = (ev: MessageEvent<WorkerResponse>) => {
+      const { id, action, result, error } = ev.data;
+      const deferred = deferredMap.get(id);
+      if (!deferred) {
+        console.warn("[OPFile]", "No deferred found for id:", id);
+        return;
+      }
+      deferredMap.delete(id);
+      if (error) deferred.reject(new Error(`${error.name}: ${error.message}`));
+      else deferred.resolve(result);
+
+      if (action === "open") {
+        openCount++;
+      } else if (action === "close") {
+        openCount--;
+        if (openCount <= 0) {
+          worker?.terminate();
+          worker = null;
+          openCount = 0;
+          for (const [, deferred] of deferredMap) {
+            deferred.reject(
+              new DOMException("Worker terminated", "AbortError"),
+            );
+          }
+          deferredMap.clear();
+        }
+      }
+    };
+    worker.onerror = (ev) => {
+      for (const [, deferred] of deferredMap) deferred.reject(ev);
+      deferredMap.clear();
+    };
+    await send("open", path, options);
+  };
+
+  return { open, send };
+};
+
+export async function createPromisePool<T>(
+  tasks: readonly (() => Promise<T>)[],
+  concurrency = 5,
+): Promise<void> {
+  // Create an iterator for sequentially fetching tasks
+  const iterator = tasks[Symbol.iterator]();
+
+  // Each "pool" function fetches tasks from the iterator and executes them
+  async function poolTask() {
+    for (;;) {
+      const next = iterator.next();
+      if (next.done) break;
+      await next.value();
+    }
+  }
+
+  // Create Promise pool according to concurrency number
+  const pools = Array(Math.min(concurrency, tasks.length))
+    .fill(0)
+    .map(() => poolTask());
+
+  await Promise.all(pools);
+}
 
 export const bufferTransfer = (
   buffer: BufferSource,

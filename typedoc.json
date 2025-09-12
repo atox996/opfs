@@ -1,0 +1,8 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/file.ts", "src/directory.ts", "src/opfs.ts"],
+  "gitRevision": "main",
+  "navigationLinks": {
+    "GitHub": "https://github.com/atox996/opfs"
+  }
+}

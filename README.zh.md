@@ -1,4 +1,6 @@
-# @atox/opfs
+# @opfs.js/core
+
+英文文档请查看 [README.md](https://github.com/atox996/opfs/blob/main/README.md)。
 
 一个现代化的 TypeScript 库，用于在 Web 浏览器中操作 Origin Private File System (OPFS)。提供简洁的基于 Promise 的 API 进行文件和目录操作。
 
@@ -15,38 +17,16 @@
 ## 安装
 
 ```bash
-npm install @atox/opfs
+npm install @opfs.js/core
 # 或
-pnpm add @atox/opfs
+pnpm add @opfs.js/core
 # 或
-yarn add @atox/opfs
+yarn add @opfs.js/core
 ```
 
-## 快速开始
+## API 文档
 
-```typescript
-import { file, dir, write } from "@atox/opfs";
-
-// 创建并写入文件
-await write("/path/to/file.txt", "Hello, World!");
-
-// 读取文件内容
-const myFile = file("/path/to/file.txt");
-const content = await myFile.text();
-console.log(content); // "Hello, World!"
-
-// 创建目录
-const myDir = dir("/path/to/directory");
-await myDir.create();
-
-// 列出目录内容
-const children = await myDir.children();
-for (const child of children) {
-  console.log(`${child.kind}: ${child.name}`);
-}
-```
-
-## API 参考
+详细的 API 文档，请参阅 [https://atox996.github.io/opfs/](https://atox996.github.io/opfs/)。
 
 ### 核心函数
 
@@ -106,12 +86,36 @@ for (const child of children) {
 - `copyTo(dest)`: 复制到目标位置
 - `moveTo(dest)`: 移动到目标位置
 
+## 快速开始
+
+```typescript
+import { file, dir, write } from "@opfs.js/core";
+
+// 创建并写入文件
+await write("/path/to/file.txt", "Hello, World!");
+
+// 读取文件内容
+const myFile = file("/path/to/file.txt");
+const content = await myFile.text();
+console.log(content); // "Hello, World!"
+
+// 创建目录
+const myDir = dir("/path/to/directory");
+await myDir.create();
+
+// 列出目录内容
+const children = await myDir.children();
+for (const child of children) {
+  console.log(`${child.kind}: ${child.name}`);
+}
+```
+
 ## 示例
 
 ### 文件操作
 
 ```typescript
-import { file, write } from "@atox/opfs";
+import { file, write } from "@opfs.js/core";
 
 // 写入数据到文件
 await write("/data/config.json", JSON.stringify({ theme: "dark" }));
@@ -136,7 +140,7 @@ while (true) {
 ### 目录操作
 
 ```typescript
-import { dir } from "@atox/opfs";
+import { dir } from "@opfs.js/core";
 
 // 创建目录结构
 const projectDir = dir("/projects/my-app");
@@ -162,7 +166,7 @@ await projectDir.copyTo("/backup/my-app-backup");
 ### 高级用法
 
 ```typescript
-import { file, dir } from "@atox/opfs";
+import { file, dir } from "@opfs.js/core";
 
 // 使用自定义选项的文件
 const dataFile = file("/data/important.txt");
@@ -190,12 +194,12 @@ await dataFile.close();
 - Web Workers
 - ReadableStream
 
-支持的浏览器：
+## 浏览器支持
 
-- Chrome 86+
-- Edge 86+
-- Firefox 111+
-- Safari 16.4+
+- Chrome 121+（完整支持 createSyncAccessHandle 及其 mode 选项）
+- Edge 121+（完整支持 createSyncAccessHandle 及其 mode 选项）
+- Firefox 111+（支持 createSyncAccessHandle，但暂不支持 mode 参数）
+- Safari 15.2+（支持 createSyncAccessHandle，但暂不支持 mode 参数）
 
 ## 开发
 
@@ -211,23 +215,12 @@ pnpm run build
 
 # 运行代码检查
 pnpm run lint
-
-# 生成 API 文档
-node scripts/gen-api.js
 ```
 
 ## 许可证
 
-MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+MIT 许可证 - 详见 [LICENSE](https://github.com/atox996/opfs/blob/main/LICENSE) 文件。
 
 ## 贡献
 
 欢迎贡献！请随时提交 Pull Request。
-
-## 更新日志
-
-版本历史请查看 [CHANGELOG.md](CHANGELOG.md)。
-
----
-
-英文文档请查看 [README.md](README.md)。

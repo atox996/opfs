@@ -1,16 +1,40 @@
 {
-  "name": "@atox/opfs",
+  "name": "@opfs.js/core",
   "version": "0.0.1",
   "type": "module",
-  "types": "./dist/index.d.ts",
+  "description": "OPFS (Origin Private File System) JavaScript wrapper with TypeScript support",
+  "homepage": "https://github.com/atox996/opfs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atox996/opfs.git"
+  },
+  "license": "MIT",
+  "author": "atox996 <atox996@gmail.com>",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown && node scripts/gen-api.js",
+    "build": "tsdown && typedoc",
     "lint": "pnpm prettier && pnpm eslint && pnpm tscheck",
     "eslint": "eslint . --cache --fix",
     "tscheck": "tsc --noEmit",
     "prettier": "prettier . --cache --write --ignore-unknown",
+    "bumpp": "bumpp",
     "preinstall": "npx only-allow pnpm",
     "postinstall": "simple-git-hooks"
   },
@@ -20,17 +44,18 @@
     "@eslint/js": "^9.35.0",
     "@types/eslint-config-prettier": "^6.11.3",
     "@types/node": "^24.3.1",
+    "bumpp": "^10.2.3",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "globals": "^16.3.0",
+    "globals": "^16.4.0",
     "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",
     "simple-git-hooks": "^2.13.1",
-    "tsdown": "^0.14.2",
+    "tsdown": "^0.15.0",
+    "typedoc": "^0.28.12",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.43.0",
-    "zx": "^8.8.1"
+    "typescript-eslint": "^8.43.0"
   },
   "commitlint": {
     "extends": [
