@@ -1,190 +1,177 @@
 # @opfs.js/core
 
-For Chinese documentation, see [README.zh.md](https://github.com/atox996/opfs/blob/main/README.zh.md).
+<p align="center">
+<a href="https://www.npmjs.com/package/@opfs.js/core"><img src="https://img.shields.io/npm/v/@opfs.js/core" alt="NPM Version"></a>
+<a href="https://www.npmjs.com/package/@opfs.js/core"><img src="https://img.shields.io/bundlephobia/minzip/@opfs.js/core" alt="Package Size"></a>
+<br>
+<a href="https://github.com/atox996/opfs"><img src="https://img.shields.io/github/stars/atox996/opfs" alt="GitHub Stars"></a>
+</p>
 
-A modern TypeScript library for working with the Origin Private File System (OPFS) in web browsers. Provides a clean, promise-based API for file and directory operations.
+**@opfs.js/core** is a modern JavaScript/TypeScript wrapper for the browser's native OPFS (Origin Private File System), providing a clean, user-friendly, and feature-rich API for working with the browser's private file system.
 
 ## Features
 
-- 🚀 **Modern API**: Clean, promise-based interface
-- 📁 **File Operations**: Create, read, write, delete files
-- 📂 **Directory Operations**: Create, list, copy, move directories
-- 🔄 **Stream Support**: Built-in support for ReadableStream
-- 🛡️ **Type Safe**: Full TypeScript support with comprehensive type definitions
-- ⚡ **Performance**: Uses Web Workers for non-blocking file operations
-- 🌐 **Browser Native**: Built on top of the OPFS API
+- 🔄 **Fully Asynchronous API** - Based on Promises and async/await
+- 📁 **Complete File System Operations** - Create, read, write, copy, move, and delete files and directories
+- 🔒 **Synchronized File Access** - Efficient synchronous file operations through Web Workers
+- 📝 **Streaming File Processing** - Support for streaming large files
+- 🔍 **TypeScript Support** - Full type definitions and type checking
+- ⚡ **High Performance** - Concurrent operations using Promise pools
+- 🧩 **Modular Design** - Easy to extend and integrate
 
 ## Installation
 
+Install using npm, yarn, or pnpm:
+
 ```bash
+# Using npm
 npm install @opfs.js/core
-# or
-pnpm add @opfs.js/core
-# or
+
+# Using yarn
 yarn add @opfs.js/core
+
+# Using pnpm
+pnpm add @opfs.js/core
 ```
 
-## API Documentation
-
-For detailed API documentation, please refer to [https://atox996.github.io/opfs/](https://atox996.github.io/opfs/).
-
-### Core Functions
-
-#### `file(path: string): OPFile`
-
-Creates a file object for the specified path.
-
-#### `dir(path: string): OPDir`
-
-Creates a directory object for the specified path.
-
-#### `write(target: string | OPFile, data: string | BufferSource | ReadableStream | OPFile, overwrite?: boolean): Promise<void>`
-
-Convenience function to write data to a file.
+## Basic Usage
 
 ### File Operations
 
-#### `OPFile` Class
+```javascript
+import { file } from "@opfs.js/core";
 
-- `create()`: Create the file
-- `exists()`: Check if file exists
-- `open(options?)`: Open file for synchronous access
-- `read(size, options?)`: Read data from file
-- `write(data, options?)`: Write data to file
-- `truncate(newSize)`: Truncate file to specified size
-- `flush()`: Flush file buffer to disk
-- `getSize()`: Get file size in bytes
-- `close()`: Close file handle
-- `text()`: Read entire file as text
-- `arrayBuffer()`: Read entire file as ArrayBuffer
-- `stream()`: Get file as ReadableStream
-- `getFile()`: Get native File object
-- `copyTo(dest)`: Copy file to destination
-- `moveTo(dest)`: Move file to destination
-- `remove()`: Delete file
+// Create or open a file
+const myFile = file("/documents/report.txt");
+await myFile.create();
+
+// Write content to the file
+const rw = await myFile.open({ mode: "readwrite" });
+await rw.write("Hello, OPFS!");
+await rw.flush();
+await rw.close();
+
+// Read file content
+const fileContent = await myFile.text();
+console.log(fileContent); // 'Hello, OPFS!'
+
+// Read as binary data
+const buffer = await myFile.arrayBuffer();
+
+// Delete the file
+await myFile.remove();
+```
 
 ### Directory Operations
 
-#### `OPDir` Class
+```javascript
+import { dir } from "@opfs.js/core";
 
-- `create()`: Create the directory
-- `exists()`: Check if directory exists
-- `children()`: Get all children (files and subdirectories)
-- `copyTo(dest)`: Copy directory to destination
-- `moveTo(dest)`: Move directory to destination
-- `remove()`: Delete directory and all contents
-
-### Base Operations
-
-#### `OPFS` Abstract Class
-
-All file and directory objects inherit from this base class:
-
-- `create()`: Create the file system object
-- `exists()`: Check if object exists
-- `remove()`: Delete the object
-- `copyTo(dest)`: Copy to destination
-- `moveTo(dest)`: Move to destination
-
-## Quick Start
-
-```typescript
-import { file, dir, write } from "@opfs.js/core";
-
-// Create and write to a file
-await write("/path/to/file.txt", "Hello, World!");
-
-// Read file content
-const myFile = file("/path/to/file.txt");
-const content = await myFile.text();
-console.log(content); // "Hello, World!"
-
-// Create a directory
-const myDir = dir("/path/to/directory");
+// Create or open a directory
+const myDir = dir("/documents/work");
 await myDir.create();
 
 // List directory contents
 const children = await myDir.children();
-for (const child of children) {
-  console.log(`${child.kind}: ${child.name}`);
-}
+children.forEach((child) => {
+  console.log(`${child.kind}: ${child.fullPath}`);
+});
+
+// Copy directory
+const destDir = dir("/backup");
+await destDir.create();
+await myDir.copyTo(destDir);
+
+// Delete directory
+await myDir.remove();
 ```
 
-## Examples
+### File System Object Properties
 
-### File Operations
+Every file system object (file or directory) has the following properties:
 
-```typescript
-import { file, write } from "@opfs.js/core";
+```javascript
+const myFile = file("/documents/report.txt");
+console.log(myFile.fullPath); // '/documents/report.txt'
+console.log(myFile.name); // 'report.txt'
+console.log(myFile.parents); // ['documents']
+console.log(myFile.kind); // 'file' (or 'directory')
+```
 
-// Write data to file
-await write("/data/config.json", JSON.stringify({ theme: "dark" }));
+### Advanced File Operations
 
-// Read and parse JSON
-const configFile = file("/data/config.json");
-const config = JSON.parse(await configFile.text());
+```javascript
+import { file } from "@opfs.js/core";
 
-// Stream large file
-const largeFile = file("/data/large-file.bin");
+const largeFile = file("/data/large.bin");
+await largeFile.create();
+
+// Write large data
+const rw = await largeFile.open();
+// Write at specific offset
+await rw.write(new Uint8Array([1, 2, 3, 4, 5]), { at: 100 });
+// Truncate file
+await rw.truncate(1024 * 1024); // 1MB
+await rw.close();
+
+// Read as stream
 const stream = await largeFile.stream();
 const reader = stream.getReader();
+// Read stream data...
 
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  // Process chunk
-  console.log("Read chunk:", value.byteLength, "bytes");
-}
+// Check if file exists
+const exists = await largeFile.exists();
+
+// Move file
+const newLocation = dir("/archive");
+await newLocation.create();
+await largeFile.moveTo(newLocation);
 ```
 
-### Directory Operations
+## API Documentation
 
-```typescript
-import { dir } from "@opfs.js/core";
+Full API documentation is available at [https://atox996.github.io/opfs/](https://atox996.github.io/opfs/).
 
-// Create directory structure
-const projectDir = dir("/projects/my-app");
-await projectDir.create();
+### Core API
 
-const srcDir = dir("/projects/my-app/src");
-await srcDir.create();
+- **file(path: string): OPFile** - Creates a file operation object
+- **dir(path: string): OPDir** - Creates a directory operation object
 
-// List directory contents
-const children = await projectDir.children();
-for (const child of children) {
-  if (child.kind === "file") {
-    console.log(`File: ${child.name}`);
-  } else {
-    console.log(`Directory: ${child.name}`);
-  }
-}
+### OPFile Class
 
-// Copy entire directory
-await projectDir.copyTo("/backup/my-app-backup");
-```
+- `create(): Promise<FileSystemFileHandle>` - Creates the file
+- `exists(): Promise<boolean>` - Checks if the file exists
+- `remove(): Promise<void>` - Deletes the file
+- `copyTo(dest): Promise<void>` - Copies the file to the destination
+- `moveTo(dest): Promise<void>` - Moves the file to the destination
+- `open(options?): Promise<FileRO | FileRW>` - Opens the file to get an access handle
+- `text(): Promise<string>` - Reads the file content as text
+- `arrayBuffer(): Promise<ArrayBuffer>` - Reads the file content as binary data
+- `stream(): Promise<ReadableStream<BufferSource>>` - Gets a readable stream for the file
+- `getFile(): Promise<File | undefined>` - Gets the underlying File object
 
-### Advanced Usage
+### OPDir Class
 
-```typescript
-import { file, dir } from "@opfs.js/core";
+- `create(): Promise<FileSystemDirectoryHandle>` - Creates the directory
+- `exists(): Promise<boolean>` - Checks if the directory exists
+- `remove(): Promise<void>` - Deletes the directory and its contents
+- `children(): Promise<(OPDir | OPFile)[]>` - Lists the immediate children of the directory
+- `copyTo(dest): Promise<void>` - Copies the directory and its contents to the destination
+- `moveTo(dest): Promise<void>` - Moves the directory and its contents to the destination
 
-// File with custom options
-const dataFile = file("/data/important.txt");
-await dataFile.open({ mode: "readwrite" });
+### FileRO Class (Read-only File Handle)
 
-// Write at specific position
-await dataFile.write("New content", { at: 0 });
+- `read(size, options?): Promise<ArrayBuffer>` - Reads data from the file
+- `getSize(): Promise<number>` - Gets the file size
+- `close(): Promise<void>` - Closes the file handle
 
-// Read specific amount
-const buffer = await dataFile.read(1024, { at: 0 });
+### FileRW Class (Read-write File Handle)
 
-// Truncate file
-await dataFile.truncate(512);
+Extends FileRO with these additional methods:
 
-// Ensure data is written to disk
-await dataFile.flush();
-await dataFile.close();
-```
+- `write(data, options?): Promise<number>` - Writes data to the file
+- `truncate(newSize): Promise<void>` - Truncates the file to the specified size
+- `flush(): Promise<void>` - Flushes pending writes to storage
 
 ## Browser Support
 
@@ -194,7 +181,7 @@ This library requires browsers that support:
 - Web Workers
 - ReadableStream
 
-## Browser Support
+### Supported Browsers
 
 - Chrome 121+ (createSyncAccessHandle with full mode option support)
 - Edge 121+ (createSyncAccessHandle with full mode option support)
@@ -203,24 +190,56 @@ This library requires browsers that support:
 
 ## Development
 
+If you want to contribute to this project, follow these steps:
+
+1. Clone the repository
+
 ```bash
-# Install dependencies
+git clone https://github.com/atox996/opfs.git
+cd opfs
+```
+
+2. Install dependencies
+
+```bash
 pnpm install
+```
 
-# Start development server
-pnpm run dev
+3. Start the development server
 
-# Build the library
-pnpm run build
+```bash
+pnpm dev
+```
 
-# Run linting
-pnpm run lint
+4. Build the project
+
+```bash
+pnpm build
+```
+
+5. Run code checks
+
+```bash
+pnpm lint
 ```
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/atox996/opfs/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please submit Issues and Pull Requests to help improve this project. Before submitting, ensure your code adheres to the project's coding style and quality requirements.
+
+## Acknowledgements
+
+This project is built on top of the browser's native [Origin Private File System](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) API, aiming to provide a cleaner, more user-friendly interface for working with the browser's private file system.
+
+## Related Links
+
+- [MDN Web Docs: Origin Private File System](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
+- [W3C File System Access API Specification](https://wicg.github.io/file-system-access/)
+
+---
+
+<p>© 2024 atox996 - Made with ❤️ for web developers everywhere!</p>
