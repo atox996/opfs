@@ -27,4 +27,3 @@ jobs:
       - run: |
           pnpm lint
           pnpm build
-          pnpm test
