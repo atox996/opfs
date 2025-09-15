@@ -239,7 +239,3 @@ This project is built on top of the browser's native [Origin Private File System
 
 - [MDN Web Docs: Origin Private File System](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
 - [W3C File System Access API Specification](https://wicg.github.io/file-system-access/)
-
----
-
-<p>© 2024 atox996 - Made with ❤️ for web developers everywhere!</p>

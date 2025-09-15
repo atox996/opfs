@@ -1,6 +1,7 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/file.ts", "src/directory.ts", "src/opfs.ts"],
+  "entryPoints": ["src/**/*.ts"],
+  "exclude": ["src/utils.ts", "src/file.worker.ts"],
   "gitRevision": "main",
   "navigationLinks": {
     "GitHub": "https://github.com/atox996/opfs"
